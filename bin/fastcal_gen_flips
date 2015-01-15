@@ -1,0 +1,138 @@
+#!/bin/bash
+# rawdata-tools - A set of tools for rawdata processing
+#
+# Copyright (c) 2015 FOXEL SA - http://foxel.ch
+# Please read <http://foxel.ch/license> for more information.
+#
+#
+# Author(s):
+#
+#       Kevin Velickovic <k.velickovic@foxel.ch>
+#
+#
+# This file is part of the FOXEL project <http://foxel.ch>.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+#
+# Additional Terms:
+#
+#       You are required to preserve legal notices and author attributions in
+#       that material or in the Appropriate Legal Notices displayed by works
+#       containing it.
+#
+#       You are required to attribute the work as explained in the "Usage and
+#       Attribution" section of <http://foxel.ch/license>.
+
+# Check arguments presence
+if [ $# -eq 0 ]; then
+    echo "Usage: $(basename $0) <JP4 foler>"
+else
+
+    # Specified folder variable
+    SRC_FOLDER=$1
+
+    # Camera modules config
+    MODULES_COUNT=9
+    IMAGES_PER_MODULE=3
+
+    # Check if jp4-info tool is installed on the system
+    if ! which jp4-info >/dev/null; then
+        echo "jp4-info not found, please visit http://sourceforge.net/p/elphel/jp4-tools/ci/master/tree/ for more informations."
+        exit
+    fi
+
+    # Module increment counter
+    INC=0
+
+    # Iterate over JP4 files
+    ( for f in ${SRC_FOLDER}/*.jp4
+    do
+        # Get JP4 infos
+        INFO_OUT="$(jp4-info $f)"
+
+        # Get vertical flip parameters
+        FLIP_STR_V1=$(echo "$INFO_OUT" | grep flip_v1 | cut -d' ' -f2)
+        FLIP_STR_V2=$(echo "$INFO_OUT" | grep flip_v2 | cut -d' ' -f2)
+        FLIP_STR_V3=$(echo "$INFO_OUT" | grep flip_v3 | cut -d' ' -f2)
+
+        # Get horizontal flip parameters
+        FLOP_STR_V1=$(echo "$INFO_OUT" | grep flip_h1 | cut -d' ' -f2)
+        FLOP_STR_V2=$(echo "$INFO_OUT" | grep flip_h2 | cut -d' ' -f2)
+        FLOP_STR_V3=$(echo "$INFO_OUT" | grep flip_h3 | cut -d' ' -f2)
+
+        # Clamp variable to 1 as maximum value
+        if [ $FLIP_STR_V1 -gt 1 ]; then
+            FLIP_STR_V1=1
+        fi
+
+        # Clamp vertical flip 2 to 1 as maximum value
+        if [ $FLIP_STR_V2 -gt 1 ]; then
+            FLIP_STR_V2=1
+        fi
+
+        # Clamp vertical flip 3 to 1 as maximum value
+        if [ $FLIP_STR_V3 -gt 1 ]; then
+            FLIP_STR_V3=1
+        fi
+
+        # Clamp horizontal flip 1 to 1 as maximum value
+        if [ $FLOP_STR_V1 -gt 1 ]; then
+            FLOP_STR_V1=1
+        fi
+
+        # Clamp horizontal flip 2 to 1 as maximum value
+        if [ $FLOP_STR_V2 -gt 1 ]; then
+            FLOP_STR_V2=1
+        fi
+
+        # Clamp horizontal flip 3 to 1 as maximum value
+        if [ $FLOP_STR_V3 -gt 1 ]; then
+            FLOP_STR_V3=1
+        fi
+
+        # Check if module counter is less than 8
+        if [ $INC -lt $((MODULES_COUNT - 1)) ]; then
+
+            # Build vertical flip key/values
+            echo "flip_ver_$( printf "%02d\n" $INC )=$FLIP_STR_V1"
+            echo "flip_ver_$( printf "%02d\n" $((INC + (MODULES_COUNT - 1))) )=$FLIP_STR_V2"
+            echo "flip_ver_$( printf "%02d\n" $((INC + ((MODULES_COUNT - 1) * 2))) )=$FLIP_STR_V3"
+
+            # Build horizontal flip key/values
+            echo "flip_hor_$( printf "%02d\n" $INC )=$FLOP_STR_V1"
+            echo "flip_hor_$( printf "%02d\n" $((INC + (MODULES_COUNT - 1))) )=$FLOP_STR_V2"
+            echo "flip_hor_$( printf "%02d\n" $((INC + ((MODULES_COUNT - 1) * 2))) )=$FLOP_STR_V3"
+        else
+
+            # Compute last modules index
+            LAST_CNT_1=$(((MODULES_COUNT * IMAGES_PER_MODULE) - 3))
+            LAST_CNT_2=$(((MODULES_COUNT * IMAGES_PER_MODULE) - 2))
+
+            # Build vertical flip key/values for module 24 and 25
+            echo "flip_ver_$LAST_CNT_1=$FLIP_STR_V1"
+            echo "flip_ver_$LAST_CNT_2=$FLIP_STR_V2"
+
+            # Build horizontal flip key/values for module 24 and 25
+            echo "flip_hor_$LAST_CNT_1=$FLOP_STR_V1"
+            echo "flip_hor_$LAST_CNT_2=$FLOP_STR_V2"
+
+            # Exit script
+            exit
+        fi
+
+        # Increment module counter
+        INC=$((INC + 1))
+    done ) | sort -u
+fi
