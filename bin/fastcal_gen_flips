@@ -106,14 +106,14 @@ else
         if [ $INC -lt $((MODULES_COUNT - 1)) ]; then
 
             # Build vertical flip key/values
-            echo "flip_ver_$( printf "%02d\n" $INC )=$FLIP_STR_V1"
-            echo "flip_ver_$( printf "%02d\n" $((INC + (MODULES_COUNT - 1))) )=$FLIP_STR_V2"
-            echo "flip_ver_$( printf "%02d\n" $((INC + ((MODULES_COUNT - 1) * 2))) )=$FLIP_STR_V3"
+            echo "vflip_$( printf "%02d\n" $INC )=$FLIP_STR_V1"
+            echo "vflip_$( printf "%02d\n" $((INC + (MODULES_COUNT - 1))) )=$FLIP_STR_V2"
+            echo "vflip_$( printf "%02d\n" $((INC + ((MODULES_COUNT - 1) * 2))) )=$FLIP_STR_V3"
 
             # Build horizontal flip key/values
-            echo "flip_hor_$( printf "%02d\n" $INC )=$FLOP_STR_V1"
-            echo "flip_hor_$( printf "%02d\n" $((INC + (MODULES_COUNT - 1))) )=$FLOP_STR_V2"
-            echo "flip_hor_$( printf "%02d\n" $((INC + ((MODULES_COUNT - 1) * 2))) )=$FLOP_STR_V3"
+            echo "hflip_$( printf "%02d\n" $INC )=$FLOP_STR_V1"
+            echo "hflip_$( printf "%02d\n" $((INC + (MODULES_COUNT - 1))) )=$FLOP_STR_V2"
+            echo "hflip_$( printf "%02d\n" $((INC + ((MODULES_COUNT - 1) * 2))) )=$FLOP_STR_V3"
         else
 
             # Compute last modules index
@@ -121,12 +121,12 @@ else
             LAST_CNT_2=$(((MODULES_COUNT * IMAGES_PER_MODULE) - 2))
 
             # Build vertical flip key/values for module 24 and 25
-            echo "flip_ver_$LAST_CNT_1=$FLIP_STR_V1"
-            echo "flip_ver_$LAST_CNT_2=$FLIP_STR_V2"
+            echo "vflip_$LAST_CNT_1=$FLIP_STR_V1"
+            echo "vflip_$LAST_CNT_2=$FLIP_STR_V2"
 
             # Build horizontal flip key/values for module 24 and 25
-            echo "flip_hor_$LAST_CNT_1=$FLOP_STR_V1"
-            echo "flip_hor_$LAST_CNT_2=$FLOP_STR_V2"
+            echo "hflip_$LAST_CNT_1=$FLOP_STR_V1"
+            echo "hflip_$LAST_CNT_2=$FLOP_STR_V2"
 
             # Exit script
             exit
