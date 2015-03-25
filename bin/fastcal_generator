@@ -120,9 +120,24 @@ def _usage():
     --mac-address        Camera MAC address
 
     [Optional arguments]
+    --print             Output results to stdout
     --help              Show this message
 
     """ % sys.argv[0]
+
+# Function to display or write entry to file
+def processData(entry, inFile, stdOut=False):
+
+    # Check stdOut option
+    if stdOut:
+
+        # Write to stdout
+        sys.stdout.write( entry )
+
+    else:
+
+        # Write to file
+        inFile.write( entry )
 
 # Program entry point function
 # pylint: disable=W0142
@@ -151,6 +166,7 @@ def main(argv):
     # Parse arguments
     __MountPoint__      = (None if not 'mount-point' in Arguments else Arguments['mount-point'].rstrip('/'))
     __CameraMAC__       = (None if not 'mac-address' in Arguments else Arguments['mac-address'])
+    __Print__           = (1 if 'print' in Arguments else 0)
     __Help__            = (1 if 'help' in Arguments else 0)
 
     # Arguments check
@@ -168,262 +184,277 @@ def main(argv):
     XML_Files_Sensors = []
     XML_Files_Maps = []
 
-    # Check if FastCal file exists
-    if os.path.isfile( OutputFile ):
-
-        # Ask user to override file
-        if not 'yes' in ask("FastCal file %s already present, replace it ?" % OutputFile, "no"):
-
-            # Exif app
-            sys.exit( 0 )
+    # Output file container
+    of = None
+
+    # Check if print option is specified
+    if not __Print__:
+
+        # Check if FastCal file exists
+        if os.path.isfile( OutputFile ):
 
-    # Open output file
-    with open(OutputFile, 'w') as of:
+            # Ask user to override file
+            if not 'yes' in ask("FastCal file %s already present, replace it ?" % OutputFile, "no"):
 
-        # Debug output
-        ShowMessage("Indexing sensors XML's...", 0, 0, 0)
+                # Exif app
+                sys.exit( 0 )
 
-        # Iterate over sensors XML's
-        for elem in sorted(glob.glob("%s/sensors/*.xml" % Calibration_Foler)):
+        # Open output file
+        of = open(OutputFile, 'w')
 
-            # Extract sensor number from file name
-            entry = re.search( r'.*(\d\d)\.calib\-tiff\.xml', elem)
+    # Debug output
+    ShowMessage("Indexing sensors XML's...", 0, 0, 0)
 
-            # Append XML file to array
-            XML_Files_Sensors.append( XMLFile(elem, int( entry.group( 1 ) )) )
+    # Iterate over sensors XML's
+    for elem in sorted(glob.glob("%s/sensors/*.xml" % Calibration_Foler)):
 
-        # Debug output
-        ShowMessage("Indexing maps XML's...", 0, 0, 0)
+        # Extract sensor number from file name
+        entry = re.search( r'.*(\d\d)\.calib\-tiff\.xml', elem)
 
-        # Iterate over maps XML's
-        for elem in sorted(glob.glob("%s/maps/*.xml" % Calibration_Foler)):
+        # Append XML file to array
+        XML_Files_Sensors.append( XMLFile(elem, int( entry.group( 1 ) )) )
 
-            # Extract sensor number from file name
-            entry = re.search( r'.*(\d\d)\.eqr\-tiff\.xml', elem)
+    # Debug output
+    ShowMessage("Indexing maps XML's...", 0, 0, 0)
 
-            # Append XML file to array
-            XML_Files_Maps.append( XMLFile(elem, int( entry.group( 1 ) )) )
+    # Iterate over maps XML's
+    for elem in sorted(glob.glob("%s/maps/*.xml" % Calibration_Foler)):
 
-        # Results values container
-        Values = {
-            'camera': __CameraMAC__.replace('-', ':'),
-            'type': "eyesis4pi",
-            'model': "eyesis4pi_5hz",
-            'modules': 9,
-            'channels': 26,
-            'imu': "adis16375",
-            'gps': "ls20031",
-            'focalLength': [],
-            'azimuth': [],
-            'elevation': [],
-            'heading': [],
-            'pixelSize': [],
-            'px0': [],
-            'py0': [],
-            'roll': [],
-            'ImageFullWidth': [],
-            'ImageFullLength': [],
-            'XPosition': [],
-            'YPosition': [],
-            'pixelCorrectionWidth': [],
-            'pixelCorrectionHeight': [],
-            'radius': [],
-            'height': [],
-            'entrancePupilForward': []
-        }
+        # Extract sensor number from file name
+        entry = re.search( r'.*(\d\d)\.eqr\-tiff\.xml', elem)
 
-        # Debug output
-        ShowMessage("Parsing values from sensors XML's...", 0, 0, 0)
+        # Append XML file to array
+        XML_Files_Maps.append( XMLFile(elem, int( entry.group( 1 ) )) )
 
-        # Iterate over sensor XML files
-        for xml in XML_Files_Sensors:
+    # Results values container
+    Values = {
+        'camera': __CameraMAC__.replace('-', ':'),
+        'type': "eyesis4pi",
+        'model': "eyesis4pi_5hz",
+        'modules': 9,
+        'channels': 26,
+        'imu': "adis16375",
+        'gps': "ls20031",
+        'focalLength': [],
+        'azimuth': [],
+        'elevation': [],
+        'heading': [],
+        'pixelSize': [],
+        'px0': [],
+        'py0': [],
+        'roll': [],
+        'ImageFullWidth': [],
+        'ImageFullLength': [],
+        'XPosition': [],
+        'YPosition': [],
+        'pixelCorrectionWidth': [],
+        'pixelCorrectionHeight': [],
+        'radius': [],
+        'height': [],
+        'entrancePupilForward': []
+    }
 
-            # Read XML file
-            xmldoc = minidom.parse( xml.path )
+    # Debug output
+    ShowMessage("Parsing values from sensors XML's...", 0, 0, 0)
 
-            # Iterate over XML entries
-            for i in xmldoc.getElementsByTagName('properties'):
+    # Iterate over sensor XML files
+    for xml in XML_Files_Sensors:
 
-                # Read focalLength
-                focalLength_value = float( i.getElementsByTagName('focalLength')[ 0 ].childNodes[0].data )
+        # Read XML file
+        xmldoc = minidom.parse( xml.path )
 
-                # Read azimuth
-                azimuth_Value     = float( i.getElementsByTagName('azimuth')[ 0 ].childNodes[0].data )
+        # Iterate over XML entries
+        for i in xmldoc.getElementsByTagName('properties'):
 
-                # Read elevation
-                elevation_Value   = float( i.getElementsByTagName('elevation')[ 0 ].childNodes[0].data )
+            # Read focalLength
+            focalLength_value = float( i.getElementsByTagName('focalLength')[ 0 ].childNodes[0].data )
 
-                # Read heading
-                heading_Value     = float( i.getElementsByTagName('heading')[ 0 ].childNodes[0].data )
+            # Read azimuth
+            azimuth_Value     = float( i.getElementsByTagName('azimuth')[ 0 ].childNodes[0].data )
 
-                # Read pixelSize
-                pixelSize_Value   = float( i.getElementsByTagName('pixelSize')[ 0 ].childNodes[0].data )
+            # Read elevation
+            elevation_Value   = float( i.getElementsByTagName('elevation')[ 0 ].childNodes[0].data )
 
-                # Read px0
-                px0_Value         = float( i.getElementsByTagName('px0')[ 0 ].childNodes[0].data )
+            # Read heading
+            heading_Value     = float( i.getElementsByTagName('heading')[ 0 ].childNodes[0].data )
 
-                # Read py0
-                py0_Value         = float( i.getElementsByTagName('py0')[ 0 ].childNodes[0].data )
+            # Read pixelSize
+            pixelSize_Value   = float( i.getElementsByTagName('pixelSize')[ 0 ].childNodes[0].data )
 
-                # Read roll
-                roll_Value        = float( i.getElementsByTagName('roll')[ 0 ].childNodes[0].data )
+            # Read px0
+            px0_Value         = float( i.getElementsByTagName('px0')[ 0 ].childNodes[0].data )
 
-                # Read pixelCorrectionWidth
-                pixelCorrectionWidth_Value = int( i.getElementsByTagName('pixelCorrectionWidth')[ 0 ].childNodes[0].data )
+            # Read py0
+            py0_Value         = float( i.getElementsByTagName('py0')[ 0 ].childNodes[0].data )
 
-                # Read pixelCorrectionHeight
-                pixelCorrectionHeight_Value = int( i.getElementsByTagName('pixelCorrectionHeight')[ 0 ].childNodes[0].data )
+            # Read roll
+            roll_Value        = float( i.getElementsByTagName('roll')[ 0 ].childNodes[0].data )
 
-                # Read radius
-                radius_Value = float( i.getElementsByTagName('radius')[ 0 ].childNodes[0].data )
+            # Read pixelCorrectionWidth
+            pixelCorrectionWidth_Value = int( i.getElementsByTagName('pixelCorrectionWidth')[ 0 ].childNodes[0].data )
 
-                # Read height
-                height_Value = float( i.getElementsByTagName('height')[ 0 ].childNodes[0].data )
+            # Read pixelCorrectionHeight
+            pixelCorrectionHeight_Value = int( i.getElementsByTagName('pixelCorrectionHeight')[ 0 ].childNodes[0].data )
 
-                # Read height
-                entrancePupilForward_Value = float( i.getElementsByTagName('entrancePupilForward')[ 0 ].childNodes[0].data )
+            # Read radius
+            radius_Value = float( i.getElementsByTagName('radius')[ 0 ].childNodes[0].data )
 
-                # Convert focalLength from mm to m
-                focalLength_value /= 1000.0
+            # Read height
+            height_Value = float( i.getElementsByTagName('height')[ 0 ].childNodes[0].data )
 
-                # Convert azimuth from degrees to radians
-                azimuth_Value = ( ( azimuth_Value * math.pi ) / 180.0 )
+            # Read height
+            entrancePupilForward_Value = float( i.getElementsByTagName('entrancePupilForward')[ 0 ].childNodes[0].data )
 
-                # Convert elevation from degrees to radians
-                elevation_Value = ( ( elevation_Value * math.pi ) / 180.0 )
+            # Convert focalLength from mm to m
+            focalLength_value /= 1000.0
 
-                # Convert heading from degrees to radians
-                heading_Value = ( ( heading_Value * math.pi ) / 180.0 )
+            # Convert azimuth from degrees to radians
+            azimuth_Value = ( ( azimuth_Value * math.pi ) / 180.0 )
 
-                # Convert pixelSize from nm to m
-                pixelSize_Value /= 1000000.0
+            # Convert elevation from degrees to radians
+            elevation_Value = ( ( elevation_Value * math.pi ) / 180.0 )
 
-                # Convert radius from mm to m
-                radius_Value /= 1000.0
+            # Convert heading from degrees to radians
+            heading_Value = ( ( heading_Value * math.pi ) / 180.0 )
 
-                # Convert height from mm to m
-                height_Value /= 1000.0
+            # Convert pixelSize from nm to m
+            pixelSize_Value /= 1000000.0
 
-                # Convert entrancePupilForward from mm to m
-                entrancePupilForward_Value /= 1000.0
+            # Convert radius from mm to m
+            radius_Value /= 1000.0
 
-                # Convert roll from degrees to radians
-                roll_Value = ( ( roll_Value * math.pi ) / 180.0 )
+            # Convert height from mm to m
+            height_Value /= 1000.0
 
-                # Insert values into array
-                Values[ 'focalLength' ].append( "focalLength_%02d=%.16e" % (xml.module, focalLength_value) )
-                Values[ 'azimuth' ].append( "azimuth_%02d=%.16e" % (xml.module, azimuth_Value) )
-                Values[ 'elevation' ].append( "elevation_%02d=%.16e" % (xml.module, elevation_Value) )
-                Values[ 'heading' ].append( "heading_%02d=%.16e" % (xml.module, heading_Value) )
-                Values[ 'pixelSize' ].append( "pixelSize_%02d=%.16e" % (xml.module, pixelSize_Value) )
-                Values[ 'px0' ].append( "px0_%02d=%.16e" % (xml.module, px0_Value) )
-                Values[ 'py0' ].append( "py0_%02d=%.16e" % (xml.module, py0_Value) )
-                Values[ 'roll' ].append( "roll_%02d=%.16e" % (xml.module, roll_Value) )
-                Values[ 'pixelCorrectionWidth' ].append( "pixelCorrectionWidth_%02d=%d" % (xml.module, pixelCorrectionWidth_Value) )
-                Values[ 'pixelCorrectionHeight' ].append( "pixelCorrectionHeight_%02d=%d" % (xml.module, pixelCorrectionHeight_Value) )
-                Values[ 'radius' ].append( "radius_%02d=%.16e" % (xml.module, radius_Value) )
-                Values[ 'height' ].append( "height_%02d=%.16e" % (xml.module, height_Value) )
-                Values[ 'entrancePupilForward' ].append( "entrancePupilForward_%02d=%.16e" % (xml.module, entrancePupilForward_Value) )
+            # Convert entrancePupilForward from mm to m
+            entrancePupilForward_Value /= 1000.0
 
-        # Debug output
-        ShowMessage("Parsing values from maps XML's...", 0, 0, 0)
+            # Convert roll from degrees to radians
+            roll_Value = ( ( roll_Value * math.pi ) / 180.0 )
 
-        # Iterate over sensor XML files
-        for xml in XML_Files_Maps:
+            # Insert values into array
+            Values[ 'focalLength' ].append( "focalLength_%02d=%.16e" % (xml.module, focalLength_value) )
+            Values[ 'azimuth' ].append( "azimuth_%02d=%.16e" % (xml.module, azimuth_Value) )
+            Values[ 'elevation' ].append( "elevation_%02d=%.16e" % (xml.module, elevation_Value) )
+            Values[ 'heading' ].append( "heading_%02d=%.16e" % (xml.module, heading_Value) )
+            Values[ 'pixelSize' ].append( "pixelSize_%02d=%.16e" % (xml.module, pixelSize_Value) )
+            Values[ 'px0' ].append( "px0_%02d=%.16e" % (xml.module, px0_Value) )
+            Values[ 'py0' ].append( "py0_%02d=%.16e" % (xml.module, py0_Value) )
+            Values[ 'roll' ].append( "roll_%02d=%.16e" % (xml.module, roll_Value) )
+            Values[ 'pixelCorrectionWidth' ].append( "pixelCorrectionWidth_%02d=%d" % (xml.module, pixelCorrectionWidth_Value) )
+            Values[ 'pixelCorrectionHeight' ].append( "pixelCorrectionHeight_%02d=%d" % (xml.module, pixelCorrectionHeight_Value) )
+            Values[ 'radius' ].append( "radius_%02d=%.16e" % (xml.module, radius_Value) )
+            Values[ 'height' ].append( "height_%02d=%.16e" % (xml.module, height_Value) )
+            Values[ 'entrancePupilForward' ].append( "entrancePupilForward_%02d=%.16e" % (xml.module, entrancePupilForward_Value) )
 
-            # Read XML file
-            xmldoc = minidom.parse( xml.path )
+    # Debug output
+    ShowMessage("Parsing values from maps XML's...", 0, 0, 0)
 
-            # Iterate over XML entries
-            for i in xmldoc.getElementsByTagName('properties'):
+    # Iterate over sensor XML files
+    for xml in XML_Files_Maps:
 
-                # Read ImageFullWidth
-                ImageFullWidth_value = int( i.getElementsByTagName('ImageFullWidth')[ 0 ].childNodes[0].data )
+        # Read XML file
+        xmldoc = minidom.parse( xml.path )
 
-                # Read ImageFullLength
-                ImageFullLength_value = int( i.getElementsByTagName('ImageFullLength')[ 0 ].childNodes[0].data )
+        # Iterate over XML entries
+        for i in xmldoc.getElementsByTagName('properties'):
 
-                # Read XPosition
-                XPosition_value = int( i.getElementsByTagName('XPosition')[ 0 ].childNodes[0].data )
+            # Read ImageFullWidth
+            ImageFullWidth_value = int( i.getElementsByTagName('ImageFullWidth')[ 0 ].childNodes[0].data )
 
-                # Read YPosition
-                YPosition_value = int( i.getElementsByTagName('YPosition')[ 0 ].childNodes[0].data )
+            # Read ImageFullLength
+            ImageFullLength_value = int( i.getElementsByTagName('ImageFullLength')[ 0 ].childNodes[0].data )
 
-                # Insert values into array
-                Values[ 'ImageFullWidth' ].append( "ImageFullWidth_%02d=%d" % (xml.module, ImageFullWidth_value) )
-                Values[ 'ImageFullLength' ].append( "ImageFullLength_%02d=%d" % (xml.module, ImageFullLength_value) )
-                Values[ 'XPosition' ].append( "XPosition_%02d=%d" % (xml.module, XPosition_value) )
-                Values[ 'YPosition' ].append( "YPosition_%02d=%d" % (xml.module, YPosition_value) )
+            # Read XPosition
+            XPosition_value = int( i.getElementsByTagName('XPosition')[ 0 ].childNodes[0].data )
 
-        # Debug output
-        ShowMessage("Asking user for needed informations...", 0, 0, 0)
+            # Read YPosition
+            YPosition_value = int( i.getElementsByTagName('YPosition')[ 0 ].childNodes[0].data )
 
-        # Writing values to file & ask user for variables at the same time
-        of.write("camera=%s\n" % ask('camera', Values[ 'camera' ]))
-        of.write("type=%s\n" % ask('type', Values[ 'type' ]))
-        of.write("model=%s\n" % ask('model', Values[ 'model' ]))
-        of.write("modules=%s\n" % ask('modules', Values[ 'modules' ]))
-        of.write("channels=%s\n" % ask('channels', Values[ 'channels' ]))
-        of.write("imu=%s\n" % ask('imu', Values[ 'imu' ]))
-        of.write("gps=%s\n" % ask('gps', Values[ 'gps' ]))
+            # Insert values into array
+            Values[ 'ImageFullWidth' ].append( "ImageFullWidth_%02d=%d" % (xml.module, ImageFullWidth_value) )
+            Values[ 'ImageFullLength' ].append( "ImageFullLength_%02d=%d" % (xml.module, ImageFullLength_value) )
+            Values[ 'XPosition' ].append( "XPosition_%02d=%d" % (xml.module, XPosition_value) )
+            Values[ 'YPosition' ].append( "YPosition_%02d=%d" % (xml.module, YPosition_value) )
 
-        # Debug output
-        ShowMessage("Writing file...", 0, 0, 0)
+    # Debug output
+    ShowMessage("Asking user for needed informations...", 0, 0, 0)
 
-        # Writing values
-        for i in Values[ 'focalLength' ]:
-            of.write("%s\n" % i )
+    # Ask user
+    Values[ 'camera' ] = ask('camera', Values[ 'camera' ])
+    Values[ 'type' ] = ask('type', Values[ 'type' ])
+    Values[ 'model' ] = ask('model', Values[ 'model' ])
+    Values[ 'modules' ] = ask('modules', Values[ 'modules' ])
+    Values[ 'channels' ] = ask('channels', Values[ 'channels' ])
+    Values[ 'imu' ] = ask('imu', Values[ 'imu' ])
+    Values[ 'gps' ] = ask('gps', Values[ 'gps' ])
 
-        for i in Values[ 'azimuth' ]:
-            of.write("%s\n" % i )
+    # Debug output
+    ShowMessage("Writing output...", 0, 0, 0)
 
-        for i in Values[ 'elevation' ]:
-            of.write("%s\n" % i )
+    # Writing values to file
+    processData("camera=%s\n" % Values[ 'camera' ], of, __Print__)
+    processData("type=%s\n" % Values[ 'type' ], of, __Print__)
+    processData("model=%s\n" % Values[ 'model' ], of, __Print__)
+    processData("modules=%s\n" % Values[ 'modules' ], of, __Print__)
+    processData("channels=%s\n" % Values[ 'channels' ], of, __Print__)
+    processData("imu=%s\n" % Values[ 'imu' ], of, __Print__)
+    processData("gps=%s\n" % Values[ 'gps' ], of, __Print__)
 
-        for i in Values[ 'heading' ]:
-            of.write("%s\n" % i )
+    # Write values
+    for i in Values[ 'focalLength' ]:
+        processData("%s\n" % i, of, __Print__)
 
-        for i in Values[ 'pixelSize' ]:
-            of.write("%s\n" % i )
+    for i in Values[ 'azimuth' ]:
+        processData("%s\n" % i, of, __Print__)
 
-        for i in Values[ 'px0' ]:
-            of.write("%s\n" % i )
+    for i in Values[ 'elevation' ]:
+        processData("%s\n" % i, of, __Print__)
 
-        for i in Values[ 'py0' ]:
-            of.write("%s\n" % i )
+    for i in Values[ 'heading' ]:
+        processData("%s\n" % i, of, __Print__)
 
-        for i in Values[ 'roll' ]:
-            of.write("%s\n" % i )
+    for i in Values[ 'pixelSize' ]:
+        processData("%s\n" % i, of, __Print__)
 
-        for i in Values[ 'ImageFullWidth' ]:
-            of.write("%s\n" % i )
+    for i in Values[ 'px0' ]:
+        processData("%s\n" % i, of, __Print__)
 
-        for i in Values[ 'ImageFullLength' ]:
-            of.write("%s\n" % i )
+    for i in Values[ 'py0' ]:
+        processData("%s\n" % i, of, __Print__)
 
-        for i in Values[ 'XPosition' ]:
-            of.write("%s\n" % i )
+    for i in Values[ 'roll' ]:
+        processData("%s\n" % i, of, __Print__)
 
-        for i in Values[ 'YPosition' ]:
-            of.write("%s\n" % i )
+    for i in Values[ 'ImageFullWidth' ]:
+        processData("%s\n" % i, of, __Print__)
 
-        for i in Values[ 'pixelCorrectionWidth' ]:
-            of.write("%s\n" % i )
+    for i in Values[ 'ImageFullLength' ]:
+        processData("%s\n" % i, of, __Print__)
 
-        for i in Values[ 'pixelCorrectionHeight' ]:
-            of.write("%s\n" % i )
+    for i in Values[ 'XPosition' ]:
+        processData("%s\n" % i, of, __Print__)
 
-        for i in Values[ 'radius' ]:
-            of.write("%s\n" % i )
+    for i in Values[ 'YPosition' ]:
+        processData("%s\n" % i, of, __Print__)
 
-        for i in Values[ 'height' ]:
-            of.write("%s\n" % i )
+    for i in Values[ 'pixelCorrectionWidth' ]:
+        processData("%s\n" % i, of, __Print__)
 
-        for i in Values[ 'entrancePupilForward' ]:
-            of.write("%s\n" % i )
+    for i in Values[ 'pixelCorrectionHeight' ]:
+        processData("%s\n" % i, of, __Print__)
 
-        # Debug output
-        ShowMessage("Done", 0, 0, 0)
+    for i in Values[ 'radius' ]:
+        processData("%s\n" % i, of, __Print__)
+
+    for i in Values[ 'height' ]:
+        processData("%s\n" % i, of, __Print__)
+
+    for i in Values[ 'entrancePupilForward' ]:
+        processData("%s\n" % i, of, __Print__)
+
+    # Debug output
+    ShowMessage("Done", 0, 0, 0)
 
 # Program entry point
 if __name__ == "__main__":
