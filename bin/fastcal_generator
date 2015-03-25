@@ -317,7 +317,7 @@ def main(argv):
             # Convert heading from degrees to radians
             heading_Value = ( ( heading_Value * math.pi ) / 180.0 )
 
-            # Convert pixelSize from nm to m
+            # Convert pixelSize from um to m
             pixelSize_Value /= 1000000.0
 
             # Convert radius from mm to m
