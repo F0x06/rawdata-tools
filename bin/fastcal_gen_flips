@@ -144,12 +144,55 @@ else
     IMAGES_PER_MODULE=3
 
     # Find a folder containing JP4 files in structure
+    # Check master
     MASTERS_DIR="$PARAM_MOUNT/rawdata/$PARAM_MAC/master"
+
+    if [ ! -d $MASTERS_DIR ]; then
+        echo "No master directory found for camera $PARAM_MAC"
+        exit
+    fi
+
+    # Check master
     MASTERS=$(ls $MASTERS_DIR)
+
+    if [ ! $MASTERS ]; then
+        echo "No masters found for camera $PARAM_MAC"
+        exit
+    fi
+
+    # Check segments
     SEGMENTS_DIR="$MASTERS_DIR/$(echo $MASTERS | cut -d' ' -f1 )/segment"
+
+    if [ ! -d $SEGMENTS_DIR ]; then
+        echo "No segments found for camera $PARAM_MAC"
+        exit
+    fi
+
+    # Check segments
     SEGMENTS=$(ls $SEGMENTS_DIR)
+
+    if [ ! $SEGMENTS ]; then
+        echo "No segments found for camera $PARAM_MAC"
+        exit
+    fi
+
+    # Check splitted data
     RAW_DIR="$SEGMENTS_DIR/$(echo $SEGMENTS | cut -d' ' -f1 )/raw"
+
+    if [ ! -d $RAW_DIR ]; then
+        echo "No splitted segments found for camera $PARAM_MAC"
+        exit
+    fi
+
+    # Check splitted data
     RAWS=$(ls $RAW_DIR)
+
+    if [ ! $RAWS ]; then
+        echo "No splitted segments found for camera $PARAM_MAC"
+        exit
+    fi
+
+    # Compute folder to get JP4 images
     JP4_DIR="$RAW_DIR/$(echo $RAWS | cut -d' ' -f1 )"
 
     # Module increment counter
