@@ -175,10 +175,19 @@ def main(argv):
         sys.exit(0)
 
     # Compute output path
-    OutputFile = "%s/camera/%s/fastcal/calibration.key" % (__MountPoint__, __CameraMAC__)
+    OutputPath = "%s/camera/%s/fastcal" % (__MountPoint__, __CameraMAC__)
+
+    # Compute output file
+    OutputFile = "%s/calibration.key" % (OutputPath)
 
     # Determine input path
     Calibration_Foler   = "%s/camera/%s/calibration" % (__MountPoint__, __CameraMAC__)
+
+    # Check if output path exists, if not create it
+    if not os.path.isdir( OutputPath ):
+
+        # Create path
+        os.makedirs( OutputPath )
 
     # Array to store results
     XML_Files_Sensors = []
