@@ -35,17 +35,92 @@
 #       You are required to attribute the work as explained in the "Usage and
 #       Attribution" section of <http://foxel.ch/license>.
 
+# Script parameters #
+PARAM_MOUNT="/data/"
+PARAM_MAC=""
+PARAM_PRINT="0"
+
+# Function to show help
+function showHelp {
+    echo "Usage: $(basename $0) [OPTIONS]"
+    echo -e "\n\t[Required arguments]"
+    echo -e "\t--mount-point        Base mount directory"
+    echo -e "\t--mac-address        Camera MAC address\n"
+    echo -e "\t[Optional arguments]"
+    echo -e "\t--print             Output results to stdout"
+    echo -e "\t--help              Show this message\n"
+}
+
+# Arguments and parameters parser #
+arguments() {
+
+    # Search in arguments #
+    while [[ $# > 0 ]]; do
+
+        args="$1"
+        shift
+        case $args in
+            --mount-point)
+                PARAM_MOUNT="$1"
+                shift
+            ;;
+            --mac-address)
+                PARAM_MAC="$1"
+                shift
+            ;;
+            --print)
+                PARAM_PRINT="1"
+                shift
+            ;;
+            --help)
+                showHelp
+                exit
+            ;;
+        esac
+
+    done
+
+}
+
+# Argument and parameters #
+arguments $@
+
+# Check execution consistency #
+if [ ! -d $PARAM_MOUNT/camera ] || [ ! -d $PARAM_MOUNT/rawdata ] || [ ! -d $PARAM_MOUNT/system ]; then
+
+    # Exit script #
+    echo "Error : unable to access standard directory with specified mount point"
+    exit 1
+
+fi
+
+# FUnction to display or write a content to a file
+function display {
+
+    # Parse parameters
+    FILE="$1"
+    PRINTFLAG="$2"
+
+    # Read stdin
+    while read data; do
+
+        # Check for print flag
+        if [ $PRINTFLAG -eq 1 ]; then
+
+            # Display data
+            echo $data
+        else
+
+            # Write data to file
+            echo $data >> $FILE
+        fi
+    done
+}
+
 # Check arguments presence
 if [ $# -eq 0 ]; then
-    echo "Usage: $(basename $0) <JP4 foler>"
+    showHelp
 else
-
-    # Specified folder variable
-    SRC_FOLDER=$1
-
-    # Camera modules config
-    MODULES_COUNT=9
-    IMAGES_PER_MODULE=3
 
     # Check if jp4-info tool is installed on the system
     if ! which jp4-info >/dev/null; then
@@ -53,11 +128,35 @@ else
         exit
     fi
 
+    # Determine output file
+    FASTCAL_FILE="$PARAM_MOUNT/camera/$PARAM_MAC/fastcal/calibration.key"
+
+    # Check if flips are already generated
+    if grep -q "hflip" "$FASTCAL_FILE"; then
+        if [ $PARAM_PRINT -eq 0 ]; then
+            echo "Flips already generated for camera $PARAM_MAC"
+            exit
+        fi
+    fi
+
+    # Camera modules config
+    MODULES_COUNT=9
+    IMAGES_PER_MODULE=3
+
+    # Find a folder containing JP4 files in structure
+    MASTERS_DIR="$PARAM_MOUNT/rawdata/$PARAM_MAC/master"
+    MASTERS=$(ls $MASTERS_DIR)
+    SEGMENTS_DIR="$MASTERS_DIR/$(echo $MASTERS | cut -d' ' -f1 )/segment"
+    SEGMENTS=$(ls $SEGMENTS_DIR)
+    RAW_DIR="$SEGMENTS_DIR/$(echo $SEGMENTS | cut -d' ' -f1 )/raw"
+    RAWS=$(ls $RAW_DIR)
+    JP4_DIR="$RAW_DIR/$(echo $RAWS | cut -d' ' -f1 )"
+
     # Module increment counter
     INC=0
 
     # Iterate over JP4 files
-    ( for f in ${SRC_FOLDER}/*.jp4
+    ( for f in $JP4_DIR/*.jp4
     do
         # Get JP4 infos
         INFO_OUT="$(jp4-info $f)"
@@ -134,5 +233,7 @@ else
 
         # Increment module counter
         INC=$((INC + 1))
-    done ) | sort -u
+    done ) | sort -u | display $FASTCAL_FILE $PARAM_PRINT
+
+    echo "Flips successfully generated for camera $PARAM_MAC"
 fi
